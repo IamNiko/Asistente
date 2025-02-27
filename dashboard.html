@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Gastos</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.1/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        :root {
+            --primary: #4e73df;
+            --success: #1cc88a;
+            --info: #36b9cc;
+            --warning: #f6c23e;
+            --danger: #e74a3b;
+            --secondary: #858796;
+            --light: #f8f9fc;
+            --dark: #5a5c69;
+        }
+        
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .dashboard-container {
+            padding: 20px;
+        }
+        
+        .card {
+            background-color: #333;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: #444;
+            border-bottom: none;
+            border-top-left-radius: 10px !important;
+            border-top-right-radius: 10px !important;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .dashboard-title {
+            color: #fff;
+            margin-bottom: 30px;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+        }
+        
+        .metric-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            height: 100%;
+        }
+        
+        .metric-card .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .metric-card .metric-title {
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        
+        .metric-card .metric-trend {
+            font-size: 0.9rem;
+        }
+        
+        .trend-up {
+            color: var(--success);
+        }
+        
+        .trend-down {
+            color: var(--danger);
+        }
+        
+        .bg-primary {
+            background-color: #4e73df !important;
+            background-image: linear-gradient(180deg, #4e73df 10%, #3a54a7 100%);
+        }
+        
+        .bg-success {
+            background-color: #1cc88a !important;
+            background-image: linear-gradient(180deg, #1cc88a 10%, #169967 100%);
+        }
+        
+        .bg-info {
+            background-color: #36b9cc !important;
+            background-image: linear-gradient(180deg, #36b9cc 10%, #2a8b99 100%);
+        }
+        
+        .bg-warning {
+            background-color: #f6c23e !important;
+            background-image: linear-gradient(180deg, #f6c23e 10%, #dda20a 100%);
+        }
+        
+        .table {
+            color: #d1d3e2;
+        }
+        
+        .table thead th {
+            border-bottom: 2px solid #444;
+            color: #fff;
+        }
+        
+        .table td, .table th {
+            border-top: 1px solid #444;
+            padding: 1rem;
+        }
+        
+        .gauge-container {
+            position: relative;
+            width: 100%;
+            max-width: 250px;
+            margin: 0 auto;
+        }
+        
+        .gauge {
+            width: 100%;
+            height: auto;
+        }
+        
+        .gauge-value {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            left: 50%;
+            bottom: 20%;
+            transform: translateX(-50%);
+        }
+        
+        .progress {
+            height: 20px;
+            background-color: #444;
+        }
+        
+        .progress-bar {
+            border-radius: 5px;
+        }
+        
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .animated {
+            animation: fadeIn 1s;
+        }
+        
+        /* Media queries */
+        @media (max-width: 768px) {
+            .metric-card .metric-value {
+                font-size: 1.5rem;
+            }
+            
+            .dashboard-title {
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* Personalización de scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #333;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        
+        .last-update {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-align: right;
+            margin-top: -20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="dashboard-title">Dashboard de Gastos</h1>
+                <p class="last-update">Última actualización: <span id="update-date"></span></p>
+            </div>
+        </div>
+        
+        <!-- Métricas principales -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100">
+                    <div class="card-body">
+                        <div class="metric-card bg-primary">
+                            <div class="metric-title">
+                                <i class="fas fa-euro-sign mr-2"></i> Total de Gastos
+                            </div>
+                            <div class="metric-value" id="total-gasto">€0.00</div>
+                            <div class="metric-trend" id="tendencia-mensual">
+                                <i class="fas fa-arrow-right"></i> 0% vs. mes anterior
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100">
+                    <div class="card-body">
+                        <div class="metric-card bg-success">
+                            <div class="metric-title">
+                                <i class="fas fa-calculator mr-2"></i> Promedio por Transacción
+                            </div>
+                            <div class="metric-value" id="promedio-gasto">€0.00</div>
+                            <div class="metric-trend" id="num-transacciones">
+                                <i class="fas fa-receipt"></i> 0 transacciones
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100">
+                    <div class="card-body">
+                        <div class="metric-card bg-info">
+                            <div class="metric-title">
+                                <i class="fas fa-chart-bar mr-2"></i> Gasto Máximo
+                            </div>
+                            <div class="metric-value" id="max-gasto">€0.00</div>
+                            <div class="metric-trend">
+                                <i class="fas fa-tag"></i> Valor más alto
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100">
+                    <div class="card-body">
+                        <div class="gauge-container">
+                            <canvas id="gaugeChart"></canvas>
+                            <div class="gauge-value" id="gauge-value">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráficos principales -->
+        <div class="row mb-4">
+            <div class="col-xl-8 col-lg-7">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold">Evolución de Gastos Mensuales</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-area">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-4 col-lg-5">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold">Distribución por Categoría</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-pie">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Empresas y métodos de pago -->
+        <div class="row mb-4">
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">Top Empresas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-bar">
+                            <canvas id="companyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">Gastos por Rango</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-bar">
+                            <canvas id="rangeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Detalles adicionales -->
+        <div class="row mb-4">
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">Últimas Transacciones</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Empresa</th>
+                                        <th>Importe</th>
+                                        <th>Categoría</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-transactions">
+                                    <!-- Las transacciones recientes se cargarán dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-xl-6 col-lg-6">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold">Métodos de Pago</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-pie">
+                            <canvas id="paymentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Función para cargar los datos desde Google Sheets
+        // Función para cargar los datos desde Google Sheets
+        async function loadData() {
+    try {
+        // Establecer fecha de actualización
+        document.getElementById('update-date').textContent = new Date().toLocaleString('es-ES');
+        
+        // Cargar CSV local generado por el script Python
+        const response = await fetch('registro_gastos.csv');// Asegúrate de que el archivo esté en la misma carpeta
+        const csvText = await response.text();
+        
+        // Parsear CSV
+        const rows = csvText.split('\n');
+        const headers = rows[0].split(',').map(h => h.toLowerCase().trim());
+        
+        const data = [];
+        for (let i = 1; i < rows.length; i++) {
+            if (!rows[i].trim()) continue;
+            
+            // Manejar campos con comas dentro de comillas
+            let values = [];
+            let inQuotes = false;
+            let currentValue = '';
+            
+            // Recorrer cada carácter de la línea para manejar correctamente campos con comas
+            for (let j = 0; j < rows[i].length; j++) {
+                const char = rows[i][j];
+                
+                if (char === '"' && (j === 0 || rows[i][j-1] !== '\\')) {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(currentValue);
+                    currentValue = '';
+                } else {
+                    currentValue += char;
+                }
+            }
+            
+            // Añadir el último valor
+            values.push(currentValue);
+            
+            // Si la línea no tiene suficientes valores, continuar con la siguiente
+            if (values.length < headers.length) continue;
+            
+            // Crear objeto con los datos
+            const row = {};
+            headers.forEach((header, index) => {
+                // Limpiar valores entre comillas
+                let value = values[index] || '';
+                if (value.startsWith('"') && value.endsWith('"')) {
+                    value = value.slice(1, -1);
+                }
+                
+                // Para campos numéricos, convertir a número
+                if (header === 'importe') {
+                    value = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                }
+                
+                row[header] = value;
+            });
+            
+            data.push(row);
+        }
+        
+        console.log('Datos cargados del CSV:', data);
+        
+        // Procesar los datos
+        analyzeData(data);
+    } catch (error) {
+        console.error('Error al cargar los datos:', error);
+        alert('Error al cargar el archivo CSV local. Verifica que "registro_gastos.csv" esté presente y sea accesible.');
+    }
+}
+
+        // Función para procesar los datos y actualizar el dashboard
+        function processData(jsonData) {
+            if (!jsonData || !jsonData.table || !jsonData.table.rows || jsonData.table.rows.length === 0) {
+                console.error('No se encontraron datos válidos');
+                return;
+            }
+            
+            // Obtener encabezados
+            const headers = jsonData.table.cols.map(col => col.label.toLowerCase());
+            
+            // Mapeo de columnas
+            const columnMap = {
+                fecha: ['fecha', 'date', 'fecha_gasto'],
+                descripcion: ['descripción', 'descripcion', 'description', 'concepto'],
+                importe: ['importe', 'monto', 'amount', 'valor', 'precio'],
+                empresa: ['empresa', 'negocio', 'comercio', 'tienda', 'proveedor'],
+                categoria: ['categoría', 'categoria', 'category', 'tipo'],
+                forma_pago: ['forma de pago', 'metodo de pago', 'payment']
+            };
+            
+            // Encontrar índices de columnas
+            const columnIndices = {};
+            Object.keys(columnMap).forEach(key => {
+                const possibleNames = columnMap[key];
+                columnIndices[key] = headers.findIndex(h => 
+                    possibleNames.some(name => h.includes(name))
+                );
+            });
+            
+            // Convertir datos a formato utilizable
+            const rows = jsonData.table.rows;
+            const processedData = rows.map(row => {
+                const item = {};
+                Object.keys(columnIndices).forEach(key => {
+                    if (columnIndices[key] !== -1 && row.c[columnIndices[key]]) {
+                        item[key] = row.c[columnIndices[key]].v;
+                    } else {
+                        // Valores predeterminados para campos faltantes
+                        if (key === 'fecha') item[key] = new Date();
+                        else if (key === 'importe') item[key] = 0;
+                        else item[key] = key === 'empresa' ? 'Desconocido' : 
+                                        key === 'categoria' ? 'Sin categoría' : 
+                                        key === 'forma_pago' ? 'Desconocido' : '';
+                    }
+                });
+                
+                // Convertir importe a número
+                if (typeof item.importe === 'string') {
+                    item.importe = parseFloat(item.importe.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+                }
+                
+                return item;
+            });
+            
+            // Analizar datos para el dashboard
+            analyzeData(processedData);
+        }
+
+        // Función para analizar datos y actualizar visualizaciones
+        function analyzeData(data) {
+            // Filtrar datos inválidos
+            data = data.filter(item => !isNaN(item.importe) && item.importe > 0);
+            
+            if (data.length === 0) {
+                console.error('No hay datos válidos para analizar');
+                return;
+            }
+            
+            // --- Cálculos generales ---
+            const totalGasto = data.reduce((sum, item) => sum + item.importe, 0);
+            const promedioGasto = totalGasto / data.length;
+            const maxGasto = Math.max(...data.map(item => item.importe));
+            
+            // Actualizar métricas principales
+            document.getElementById('total-gasto').textContent = formatCurrency(totalGasto);
+            document.getElementById('promedio-gasto').textContent = formatCurrency(promedioGasto);
+            document.getElementById('max-gasto').textContent = formatCurrency(maxGasto);
+            document.getElementById('num-transacciones').innerHTML = `<i class="fas fa-receipt"></i> ${data.length} transacciones`;
+            
+            // --- Análisis por categoría ---
+            const categorias = {};
+            data.forEach(item => {
+                const cat = item.categoria || 'Sin categoría';
+                if (!categorias[cat]) categorias[cat] = { sum: 0, count: 0 };
+                categorias[cat].sum += item.importe;
+                categorias[cat].count++;
+            });
+            
+            const categoriasArray = Object.keys(categorias).map(cat => ({
+                categoria: cat,
+                sum: categorias[cat].sum,
+                count: categorias[cat].count,
+                percentage: (categorias[cat].sum / totalGasto * 100).toFixed(1)
+            }));
+            
+            categoriasArray.sort((a, b) => b.sum - a.sum);
+            
+            // --- Análisis por empresa ---
+            const empresas = {};
+            data.forEach(item => {
+                const emp = item.empresa || 'Desconocido';
+                if (!empresas[emp]) empresas[emp] = { sum: 0, count: 0 };
+                empresas[emp].sum += item.importe;
+                empresas[emp].count++;
+            });
+            
+            const empresasArray = Object.keys(empresas).map(emp => ({
+                empresa: emp,
+                sum: empresas[emp].sum,
+                count: empresas[emp].count,
+                percentage: (empresas[emp].sum / totalGasto * 100).toFixed(1)
+            }));
+            
+            empresasArray.sort((a, b) => b.sum - a.sum);
+            const topEmpresas = empresasArray.slice(0, 10);
+            
+            // --- Análisis por mes ---
+            const meses = {};
+            data.forEach(item => {
+                let fecha;
+                if (item.fecha instanceof Date) {
+                    fecha = item.fecha;
+                } else if (typeof item.fecha === 'string') {
+                    // Intentar varios formatos de fecha
+                    fecha = new Date(item.fecha);
+                    if (isNaN(fecha.getTime())) {
+                        // Intentar formato dd/mm/yyyy
+                        const parts = item.fecha.split(/[\/\-\.]/);
+                        if (parts.length === 3) {
+                            if (parts[0].length === 4) { // yyyy-mm-dd
+                                fecha = new Date(parts[0], parts[1]-1, parts[2]);
+                            } else { // dd/mm/yyyy
+                                fecha = new Date(parts[2], parts[1]-1, parts[0]);
+                            }
+                        }
+                    }
+                }
+                
+                if (fecha && !isNaN(fecha.getTime())) {
+                    const mesKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+                    if (!meses[mesKey]) meses[mesKey] = 0;
+                    meses[mesKey] += item.importe;
+                }
+            });
+            
+            const mesesSorted = Object.keys(meses).sort();
+            const mesesValues = mesesSorted.map(key => meses[key]);
+            
+            // --- Análisis por método de pago ---
+            const metodosPago = {};
+            data.forEach(item => {
+                const metodo = item.forma_pago || 'Desconocido';
+                if (!metodosPago[metodo]) metodosPago[metodo] = { sum: 0, count: 0 };
+                metodosPago[metodo].sum += item.importe;
+                metodosPago[metodo].count++;
+            });
+            
+            const metodosPagoArray = Object.keys(metodosPago).map(metodo => ({
+                metodo: metodo,
+                sum: metodosPago[metodo].sum,
+                count: metodosPago[metodo].count,
+                percentage: (metodosPago[metodo].sum / totalGasto * 100).toFixed(1)
+            }));
+            
+            metodosPagoArray.sort((a, b) => b.sum - a.sum);
+            
+            // --- Rangos de gasto ---
+            const rangoGasto = {
+                'Menos de 10€': { sum: 0, count: 0 },
+                '10€ - 50€': { sum: 0, count: 0 },
+                '50€ - 100€': { sum: 0, count: 0 },
+                '100€ - 500€': { sum: 0, count: 0 },
+                'Más de 500€': { sum: 0, count: 0 }
+            };
+            
+            data.forEach(item => {
+                let rango;
+                if (item.importe < 10) rango = 'Menos de 10€';
+                else if (item.importe < 50) rango = '10€ - 50€';
+                else if (item.importe < 100) rango = '50€ - 100€';
+                else if (item.importe < 500) rango = '100€ - 500€';
+                else rango = 'Más de 500€';
+                
+                rangoGasto[rango].sum += item.importe;
+                rangoGasto[rango].count++;
+            });
+            
+            const rangoGastoArray = Object.keys(rangoGasto).map(rango => ({
+                rango: rango,
+                sum: rangoGasto[rango].sum,
+                count: rangoGasto[rango].count
+            }));
+            
+            // --- Tendencias ---
+            let tendenciaMensual = 0;
+            if (mesesSorted.length >= 2) {
+                const ultimoMes = meses[mesesSorted[mesesSorted.length - 1]];
+                const penultimoMes = meses[mesesSorted[mesesSorted.length - 2]];
+                tendenciaMensual = penultimoMes > 0 ? ((ultimoMes - penultimoMes) / penultimoMes * 100).toFixed(1) : 0;
+                
+                // Actualizar el indicador de tendencia
+                const tendenciaEl = document.getElementById('tendencia-mensual');
+                if (tendenciaMensual > 0) {
+                    tendenciaEl.innerHTML = `<i class="fas fa-arrow-up"></i> ${tendenciaMensual}% vs. mes anterior`;
+                    tendenciaEl.className = 'metric-trend trend-up';
+                } else if (tendenciaMensual < 0) {
+                    tendenciaEl.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(tendenciaMensual)}% vs. mes anterior`;
+                    tendenciaEl.className = 'metric-trend trend-down';
+                } else {
+                    tendenciaEl.innerHTML = `<i class="fas fa-arrows-alt-h"></i> Sin cambios vs. mes anterior`;
+                    tendenciaEl.className = 'metric-trend';
+                }
+                
+                // Actualizar valor del gauge
+                document.getElementById('gauge-value').textContent = `${Math.abs(tendenciaMensual)}%`;
+            }
+            
+            // --- Transacciones recientes ---
+            data.sort((a, b) => {
+                const fechaA = a.fecha instanceof Date ? a.fecha : new Date(a.fecha);
+                const fechaB = b.fecha instanceof Date ? b.fecha : new Date(b.fecha);
+                return fechaB - fechaA;
+            });
+            
+            const transaccionesRecientes = data.slice(0, 5);
+            const transaccionesHTML = transaccionesRecientes.map(item => `
+                <tr>
+                    <td>${formatDate(item.fecha)}</td>
+                    <td>${item.empresa}</td>
+                    <td>${formatCurrency(item.importe)}</td>
+                    <td>${item.categoria}</td>
+                </tr>
+            `).join('');
+            
+            document.getElementById('recent-transactions').innerHTML = transaccionesHTML;
+            
+            // --- Crear gráficos ---
+            createMonthlyChart(mesesSorted, mesesValues);
+            createCategoryChart(categoriasArray);
+            createCompanyChart(topEmpresas);
+            createPaymentChart(metodosPagoArray);
+            createRangeChart(rangoGastoArray);
+            createGaugeChart(tendenciaMensual);
+        }
+
+        // Funciones para crear gráficos con Chart.js
+        function createMonthlyChart(labels, values) {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gasto Mensual',
+                        data: values,
+                        backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                        borderColor: 'rgba(78, 115, 223, 1)',
+                        pointRadius: 3,
+                        pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                        pointBorderColor: 'rgba(78, 115, 223, 1)',
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: 'rgba(78, 115, 223, 1)',
+                        pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
+                        pointHitRadius: 10,
+                        pointBorderWidth: 2,
+                        lineTension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            left: 10,
+                            right: 25,
+                            top: 25,
+                            bottom: 0
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            bodyColor: "#fff",
+                            titleMarginBottom: 10,
+                            titleColor: '#fff',
+                            titleFontStyle: 'bold',
+                            borderColor: 'rgba(78, 115, 223, 1)',
+                            borderWidth: 1,
+                            cornerRadius: 3,
+                            intersect: false,
+                            mode: 'index',
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Gasto: ' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCategoryChart(categorias) {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            const labels = categorias.map(cat => cat.categoria);
+            const data = categorias.map(cat => cat.sum);
+            const backgroundColors = [
+                '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', 
+                '#858796', '#5a5c69', '#6610f2', '#6f42c1', '#fd7e14'
+            ];
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        hoverBackgroundColor: backgroundColors,
+                        hoverBorderColor: "white",
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: 'white',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            bodyColor: "#fff",
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const percentage = (value / data.reduce((a, b) => a + b, 0) * 100).toFixed(1);
+                                    return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCompanyChart(empresas) {
+            const ctx = document.getElementById('companyChart').getContext('2d');
+            
+            const labels = empresas.map(emp => emp.empresa);
+            const data = empresas.map(emp => emp.sum);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos por Empresa',
+                        data: data,
+                        backgroundColor: '#4e73df',
+                        borderColor: '#4e73df',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            bodyColor: "#fff",
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Gasto: ' + formatCurrency(context.raw);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createRangeChart(rangos) {
+            const ctx = document.getElementById('rangeChart').getContext('2d');
+            
+            const labels = rangos.map(r => r.rango);
+            const data = rangos.map(r => r.sum);
+            const counts = rangos.map(r => r.count);
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Importe',
+                        data: data,
+                        backgroundColor: '#1cc88a',
+                        borderColor: '#1cc88a',
+                        borderWidth: 1,
+                        order: 1
+                    }, {
+                        label: 'Cantidad',
+                        data: counts,
+                        type: 'line',
+                        backgroundColor: 'transparent',
+                        borderColor: '#f6c23e',
+                        pointBackgroundColor: '#f6c23e',
+                        pointBorderColor: '#f6c23e',
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: '#f6c23e',
+                        pointHoverBorderColor: '#f6c23e',
+                        yAxisID: 'y1',
+                        order: 0
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false,
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        y: {
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Importe (€)',
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Cantidad',
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: 'white'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            bodyColor: "#fff",
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.label === 'Importe') {
+                                        return 'Importe: ' + formatCurrency(context.raw);
+                                    } else {
+                                        return 'Cantidad: ' + context.raw;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createPaymentChart(metodos) {
+            const ctx = document.getElementById('paymentChart').getContext('2d');
+            
+            const labels = metodos.map(m => m.metodo);
+            const data = metodos.map(m => m.sum);
+            const backgroundColors = [
+                '#1cc88a', '#4e73df', '#36b9cc', '#f6c23e', '#e74a3b'
+            ];
+            
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        hoverBackgroundColor: backgroundColors,
+                        hoverBorderColor: "white",
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: 'white',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            bodyColor: "#fff",
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const percentage = (value / data.reduce((a, b) => a + b, 0) * 100).toFixed(1);
+                                    return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createGaugeChart(tendencia) {
+            const ctx = document.getElementById('gaugeChart').getContext('2d');
+            
+            // Determinar color según tendencia
+            const isPositive = tendencia > 0;
+            const gaugeColor = isPositive ? '#e74a3b' : '#1cc88a'; // Rojo si sube el gasto, verde si baja
+            
+            // Valor absoluto de tendencia, limitado a 50% para la visualización
+            const absValue = Math.min(Math.abs(tendencia), 50);
+            // Calcular el valor normalizado para el gauge (0-100)
+            const gaugeValue = absValue * 2; // Multiplicamos por 2 para que el 50% sea el máximo en el gauge
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Variación', 'Restante'],
+                    datasets: [{
+                        data: [gaugeValue, 100 - gaugeValue],
+                        backgroundColor: [gaugeColor, '#444444'],
+                        borderWidth: 0,
+                        cutout: '85%'
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    circumference: 180,
+                    rotation: 270,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Utilidades para formatear datos
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
+        }
+        
+        function formatDate(date) {
+            if (date instanceof Date) {
+                return date.toLocaleDateString('es-ES');
+            } else if (typeof date === 'string') {
+                // Intentar convertir string a fecha
+                const d = new Date(date);
+                if (!isNaN(d.getTime())) {
+                    return d.toLocaleDateString('es-ES');
+                }
+                return date;
+            }
+            return 'Fecha desconocida';
+        }
+
+        // Cargar datos cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Reemplazar el ID de la hoja de cálculo con el real antes de cargar datos
+            loadData();
+        });
+    </script>
+</body>
+</html>
