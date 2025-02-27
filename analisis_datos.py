@@ -1,12 +1,19 @@
+import pandas as pd
 def analyze_data(df):
     """
     Analiza los datos y crea las métricas para el dashboard
+    
+    Args:
+        df (pandas.DataFrame): DataFrame con los datos de gastos
+    
+    Returns:
+        dict: Diccionario con las métricas para el dashboard
     """
     if df is None or df.empty:
         return None
     
-    # Convertir fecha a datetime para manipulaciones
-    df['fecha'] = pd.to_datetime(df['fecha'])
+    # Convertir Fecha a datetime para manipulaciones
+    df['Fecha'] = pd.to_datetime(df['Fecha'])
     
     # Analizar por categoría
     category_data = df.groupby('categoria')['importe'].agg(['sum', 'count']).reset_index()
@@ -19,7 +26,7 @@ def analyze_data(df):
     business_data['percentage'] = (business_data['sum'] / business_data['sum'].sum() * 100).round(1)
     
     # Analizar por mes
-    df['mes_año'] = df['fecha'].dt.strftime('%Y-%m')
+    df['mes_año'] = df['Fecha'].dt.strftime('%Y-%m')
     monthly_data = df.groupby('mes_año')['importe'].sum().reset_index()
     monthly_data = monthly_data.sort_values('mes_año')
     
@@ -33,19 +40,19 @@ def analyze_data(df):
     payment_data['percentage'] = (payment_data['sum'] / payment_data['sum'].sum() * 100).round(1)
     
     # Añadir análisis por día de la semana
-    df['dia_semana'] = df['fecha'].dt.strftime('%A')
+    df['dia_semana'] = df['Fecha'].dt.strftime('%A')
     weekday_data = df.groupby('dia_semana')['importe'].sum().reset_index()
     
     # Añadir análisis trimestral
-    df['trimestre'] = df['fecha'].dt.quarter
-    df['año'] = df['fecha'].dt.year
+    df['trimestre'] = df['Fecha'].dt.quarter
+    df['año'] = df['Fecha'].dt.year
     quarterly_data = df.groupby(['año', 'trimestre'])['importe'].sum().reset_index()
     quarterly_data['periodo'] = quarterly_data['año'].astype(str) + '-Q' + quarterly_data['trimestre'].astype(str)
     quarterly_data = quarterly_data.sort_values(['año', 'trimestre'])
     
     # Obtener las últimas 5 transacciones
-    recent_transactions = df.sort_values('fecha', ascending=False).head(5)
-    recent_transactions['fecha_str'] = recent_transactions['fecha'].dt.strftime('%Y-%m-%d')
+    recent_transactions = df.sort_values('Fecha', ascending=False).head(5)
+    recent_transactions['Fecha_str'] = recent_transactions['Fecha'].dt.strftime('%Y-%m-%d')
     
     # Calcular KPIs generales
     total_gasto = df['importe'].sum()
@@ -63,6 +70,9 @@ def analyze_data(df):
     
     # Gastos por rango
     def get_range(value):
+        """
+        Retorna el rango de gasto para un importe dado
+        """
         if value < 10:
             return "Menos de 10€"
         elif value < 50:
@@ -106,7 +116,7 @@ def analyze_data(df):
     # Formatear transacciones recientes para el dashboard
     for _, row in recent_transactions.iterrows():
         dashboard_data['transacciones_recientes'].append({
-            'fecha': row['fecha_str'],
+            'Fecha': row['Fecha_str'],
             'empresa': row['empresa'],
             'descripcion': row['descripcion'],
             'importe': row['importe'],
